@@ -53,16 +53,15 @@ async function main() {
         prompt,
     });
 
-    const scrapedContent = await scrapeWebpage("https://python.langchain.com/docs/concepts/");
-    
+    const scrapedContent = await scrapeWebpage("https://commons.wikimedia.org/wiki/Main_Page");
     // Create a Document object
     const doc = new Document({ pageContent: scrapedContent });
 
     const response = await chain.invoke({
-        input: "What are LangChain concepts?",
+        input: "Summarize the page",
         context: [doc]  // Pass an array with the document
     });
-
+    console.log(doc.pageContent.length);
     console.log(response);
 }
 
