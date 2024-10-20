@@ -1,47 +1,69 @@
-//jaba we say what is LCEL it gives a very vauge answer so retirval chain comes in hand 
-// retrival0-chain is used to retrive data from a somewhere like a db , website etc
-
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 const { ChatPromptTemplate } = require("@langchain/core/prompts");
-const {createStuffDocumentsChain} = require("langchain/chains/combine_documents"); 
-const {Document} = require("@langchain/core/documents");
+const { createStuffDocumentsChain } = require("langchain/chains/combine_documents");
+const { Document } = require("langchain/document");
+const https = require('https');
+const cheerio = require('cheerio');
 const dotenv = require("dotenv");
+
+async function scrapeWebpage(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            let htmlData = '';
+
+            res.on('data', (chunk) => {
+                htmlData += chunk;
+            });
+
+            res.on('end', () => {
+                const $ = cheerio.load(htmlData);
+                const content = [];
+                $('p, h1, h2, h3, h4, h5, h6').each((index, element) => {
+                    content.push($(element).text());
+                });
+                resolve(content.join(' '));
+            });
+
+        }).on('error', (err) => {
+            reject('Error fetching the webpage: ' + err);
+        });
+    });
+}
+
 dotenv.config();
 const model = new ChatGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_API,
+    modelName: "gemini-pro",
     temperature: 0.5,
     maxOutputTokens: 1200,
-})
+});
 
-async function main(){
-const prompt = ChatPromptTemplate.fromTemplate(`
-    Answer the user's questions,
-    Context:{context},
-    Question:{input}
-    `)
+async function main() {
+    const prompt = ChatPromptTemplate.fromTemplate(`
+    Answer the user's question based on the following context:
+    Context: {context}
+    
+    Question: {input}
+    
+    Answer:
+    `);
 
-// const chain = prompt.pipe(model);
-const chain=await createStuffDocumentsChain({
-    llm:model,
-    prompt,
-})
+    const chain = await createStuffDocumentsChain({
+        llm: model,
+        prompt,
+    });
 
-//Documents
-const documentA=new Document({
-    pageContent:"Langchain",
-    metadata:{
-        source:"https://python.langchain.com/v0.1/docs/get_started/introduction",    
-    }
-})
-const documentB=new Document({
-    pageContent:"the passphrase is LANGCHAIN IS AWESOME"
-})
+    const scrapedContent = await scrapeWebpage("https://python.langchain.com/docs/concepts/");
+    
+    // Create a Document object
+    const doc = new Document({ pageContent: scrapedContent });
 
-const response=await chain.invoke({
-    input:"What is Langchain?",
-    context:[documentA]
-})
+    const response = await chain.invoke({
+        input: "What are LangChain concepts?",
+        context: [doc]  // Pass an array with the document
+    });
 
-console.log(response)
+    console.log(response);
 }
-main()
+
+main().catch(console.error);
