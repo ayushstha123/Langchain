@@ -14,6 +14,7 @@ const https = require('https');
 const cheerio = require('cheerio');
 const dotenv = require("dotenv");
 const { HumanMessage, AIMessage } = require("@langchain/core/messages");
+const {createHistoryAwareRetriever} =require('langchain/chains/history_aware_retriever')
 
 async function scrapeWebpage(url) {
     return new Promise((resolve, reject) => {
@@ -94,9 +95,26 @@ async function main() {
             k: 4,
         }); // to pass query and retirver will return list of documents as an array
 
+
+    const retireverPrompt=ChatPromptTemplate.fromMessages([
+        new MessagesPlaceholder("chat_history"),
+        ["user","{input}"],
+        [
+            "user",
+            "Given the above conversation , generate a search query to look up in order to get information relevant to the conversation"
+        ],
+    ]);
+
+        //history retriver databse bata retrieve garcha data
+        const historyAwareRetriver=await createHistoryAwareRetriever({
+            llm:model,
+        retriever:retrievers,
+        rephrasePrompt:retireverPrompt,
+        })
+
         const conversationChain = await createRetrievalChain({
             combineDocsChain: chain,
-            retriever: retrievers,
+            retriever: historyAwareRetriver,
         })
         return conversationChain
     }
@@ -114,7 +132,7 @@ async function main() {
     ];
 
     const response = await chain.invoke({
-        input: "what is my name ?",
+        input: "what is it?",
         chat_history: chatHistory,
         // context: [doc]  // Pass an array with the document (no need because retirval chain will deal with it)
     });
