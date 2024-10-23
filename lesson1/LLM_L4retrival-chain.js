@@ -53,12 +53,12 @@ async function main() {
         prompt,
     });
 
-    const scrapedContent = await scrapeWebpage("https://commons.wikimedia.org/wiki/Main_Page");
+    const scrapedContent = await scrapeWebpage("https://www.reddit.com/r/endmyopia/comments/1g9n4fe/1_year_progress_475_to_400_prescription_update/");
     // Create a Document object
     const doc = new Document({ pageContent: scrapedContent });
 
     const response = await chain.invoke({
-        input: "Summarize the page",
+        input: "Summarize the reddit post about what the account is saying about his progress on myopia",
         context: [doc]  // Pass an array with the document
     });
     console.log(doc.pageContent.length);
